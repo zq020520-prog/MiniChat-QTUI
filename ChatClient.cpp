@@ -196,6 +196,14 @@ void ChatClient::ReceiveLoop()
                     username,
                     currentChatFriend,
                     "[发送失败] 你不是他的好友");
+                if (OnRecentChatChanged)
+                {
+                    OnRecentChatChanged();
+                }
+                if (OnChatChanged)
+                {
+                    OnChatChanged();
+                }
             }
 
             break;
