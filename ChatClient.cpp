@@ -29,7 +29,6 @@ bool ChatClient::Connect(const std::string& ip,
 
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
     {
-
         return false;
     }
 
