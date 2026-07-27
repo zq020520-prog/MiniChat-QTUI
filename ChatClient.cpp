@@ -29,6 +29,7 @@ bool ChatClient::Connect(const std::string& ip,
 
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
     {
+
         return false;
     }
 
@@ -72,7 +73,7 @@ bool ChatClient::Connect(const std::string& ip,
     return true;
 }
 
-bool ChatClient::Login(
+LoginResult ChatClient::Login(
     const std::string& user,
     const std::string& password)
 {
@@ -82,7 +83,6 @@ bool ChatClient::Login(
 
     strcpy_s(msg.sender, user.c_str());
 
-    username = user;
 
     strcpy_s(msg.password, password.c_str());
 
@@ -97,11 +97,12 @@ bool ChatClient::Login(
         MessageType::LOGIN_RESULT,
         reply))
     {
-        return false;
+        return LoginResult::NetworkError;
     }
-    if (reply.result)
-    {
 
+    if (reply.result == (int)LoginResult::Success)
+    {
+        username = user;
         std::string dbName =
             username + "_chat.db";
 
@@ -109,9 +110,7 @@ bool ChatClient::Login(
         {
             chatDB.CreateTable();
         }
-        //------------------------
-    // 告诉服务器已经准备好了
-    //------------------------
+
         Message ready{};
 
         ready.type = MessageType::READY;
@@ -124,12 +123,9 @@ bool ChatClient::Login(
             (char*)&ready,
             sizeof(ready),
             0);
-
-        return true;
     }
 
-
-    return false;
+    return (LoginResult)reply.result;
 }
 
 void ChatClient::ReceiveLoop()
@@ -217,19 +213,28 @@ void ChatClient::ReceiveLoop()
             }
             break;
         }
+        case MessageType::LOGIN_RESULT:
+        case MessageType::REGISTER_RESULT:
+        {
+            std::lock_guard<std::mutex> lock(replyMutex);
+            replyQueue.push_back(msg);
+            replyCV.notify_one();
+            break;
+        }
 
         //=========================
         // 其它消息（登录、好友等）
         //=========================
         default:
         {
-            {
+
+         
                 std::lock_guard<std::mutex> lock(replyMutex);
 
-                replyQueue.push(msg);
-            }
+                replyQueue.push_back(msg);
+      
 
-            replyCV.notify_one();
+                 replyCV.notify_one();
 
             break;
         }
@@ -237,7 +242,7 @@ void ChatClient::ReceiveLoop()
         }
     }
 }
-bool ChatClient::Register(
+RegisterResult ChatClient::Register(
     const std::string& user,
     const std::string& password)
 {
@@ -260,15 +265,10 @@ bool ChatClient::Register(
         MessageType::REGISTER_RESULT,
         reply))
     {
-        return false;
+        return RegisterResult::NetworkError;
     }
 
-    if (reply.result)
-    {
-        return true;
-    }
-
-    return false;
+    return (RegisterResult)reply.result;
 }
 
 std::vector<RecentChat> ChatClient::GetRecentChats()
@@ -298,7 +298,7 @@ void ChatClient::Disconnect()
     WSACleanup();
 }
 
-bool ChatClient::AddFriend(
+AddFriendResult ChatClient::AddFriend(
     const std::string& friendName)
 {
     Message msg{};
@@ -322,10 +322,10 @@ bool ChatClient::AddFriend(
         MessageType::ADD_FRIEND_RESULT,
         reply))
     {
-        return false;
+        return AddFriendResult::NetworkError;
     }
 
-    return reply.result == 1;
+    return (AddFriendResult)reply.result;
 }
 
 
@@ -391,7 +391,6 @@ void ChatClient::Logout()
 
     chatDB.Close();
 }
-
 
 
 std::vector<FriendRequest> ChatClient::GetFriendRequests()
@@ -535,6 +534,7 @@ bool ChatClient::RejectFriend(const std::string& sender)
     return false;
 }
 
+
 bool ChatClient::WaitReply(
     MessageType type,
     Message& msg)
@@ -543,27 +543,24 @@ bool ChatClient::WaitReply(
 
     while (true)
     {
-        replyCV.wait(lock,
-            [this]()
+        replyCV.wait(lock, [this]
             {
                 return !replyQueue.empty();
             });
 
-        if (replyQueue.front().type == type)
+        for (auto it = replyQueue.begin();
+            it != replyQueue.end();
+            ++it)
         {
-            msg = replyQueue.front();
-
-            replyQueue.pop();
-
-            return true;
+            if (it->type == type)
+            {
+                msg = *it;
+                replyQueue.erase(it);
+                return true;
+            }
         }
-
-        // 不是我要的消息
-        // 先释放锁，等下一次
-        replyCV.wait(lock);
     }
 }
-
 
 void ChatClient::SendChatMessage(const std::string& text)
 {

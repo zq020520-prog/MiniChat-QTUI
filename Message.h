@@ -65,7 +65,7 @@ struct Message
     char password[MAX_PASSWORD_LEN];
 
     char text[MAX_TEXT_LEN];
-
+    
     Message()
     {
         memset(this, 0, sizeof(Message));

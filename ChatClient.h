@@ -18,8 +18,31 @@ struct FriendRequest
     std::string receiver;    // 接收人
     int status;              // 0待处理 1同意 2拒绝
 };
-
-
+enum class LoginResult
+{
+    Success = 1,
+    UserNotExist = 0,
+    PasswordError = -1,
+    AlreadyOnline = -2,
+    NetworkError = -3
+};
+enum class RegisterResult
+{
+    Success = 1,          // 注册成功
+    UserAlreadyExist = 0, // 用户已存在
+    DatabaseError = -1,   // 数据库操作失败
+    NetworkError = -2     // 客户端使用
+};
+enum class AddFriendResult
+{
+    Success = 1,          // 发送成功
+    UserNotExist = 0,     // 用户不存在
+    AlreadyFriend = -1,   // 已经是好友
+    AlreadySent = -2,     // 已发送申请，等待对方处理
+    Self = -3,            // 不能添加自己
+    DatabaseError = -4,   // 数据库错误
+    NetworkError = -5     // 客户端使用
+};
 class ChatClient
 {
 public:
@@ -39,16 +62,15 @@ public:
     bool DeleteFriend(
         const std::string& friendName);
 
-    bool AddFriend(
+    AddFriendResult AddFriend(
         const std::string& friendName);
 
-
     void CloseChat();
-    bool Login(
+    LoginResult Login(
         const std::string& user,
         const std::string& password);
 
-    bool Register(
+    RegisterResult Register(
         const std::string& user,
         const std::string& password);
 
@@ -82,13 +104,12 @@ private:
 
     std::string username;
 
-
     std::atomic<bool> running;
 
     std::thread recvThread;
 
 
-   std::queue<Message> replyQueue;
+    std::deque<Message> replyQueue;
 
 
     // 互斥锁
