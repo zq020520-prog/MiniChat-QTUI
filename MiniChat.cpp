@@ -264,6 +264,8 @@ void MiniChat::on_btnLogout_clicked()
 
     client.Logout();
 
+    client.Disconnect();
+
     ResetUI();
 }
 
