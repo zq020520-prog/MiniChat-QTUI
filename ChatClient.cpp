@@ -146,7 +146,7 @@ void ChatClient::ReceiveLoop()
             // 只有不是主动断开才通知UI
             if (!manualDisconnect && OnDisconnected)
             {
-     
+
                 OnDisconnected();
             }
 

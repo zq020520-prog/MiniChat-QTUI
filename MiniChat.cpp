@@ -557,7 +557,7 @@ bool MiniChat::EnsureConnected()
     if (client.IsConnected())
         return true;
 
-    if (!client.Connect("127.0.0.1", 8888))
+    if (!client.Connect("192.168.43.128", 8888))
     {
         client.Disconnect();
         ui.statusLabel->setText("网络异常，请重试！");
