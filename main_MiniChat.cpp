@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 
     app.setFont(font);
 
-    //这里输入自己的服务器IP
+    //输入自己的服务器IP
     QString serverIP ="192.168.43.128";
 
     MiniChat window(serverIP);
