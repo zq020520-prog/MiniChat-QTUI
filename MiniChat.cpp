@@ -204,43 +204,31 @@ void MiniChat::on_registerButton_clicked()
 void MiniChat::on_btnSession_clicked()
 {
     ui.contentWidget->setCurrentWidget(ui.pageSession);
+   
     LoadRecentChats();
-    client.CloseChat();
 
-    currentFriend.clear();
-
-    ui.listChat->clear();
-
-    ui.lblFriendName->clear();
+    CurrentChatClear();
 
 }
 void MiniChat::on_btnFriend_clicked()
 {
     ui.contentWidget->setCurrentWidget(ui.pageFriend);
+
     LoadFriendList();
-    client.CloseChat();
 
-    currentFriend.clear();
-
-    ui.listChat->clear();
-
-    ui.lblFriendName->clear();
+    CurrentChatClear();
 }
 void MiniChat::on_btnRequest_clicked()
 {
     LoadFriendRequestList();
+
     client.ClearPendingNotify();
 
     UpdateFriendRequestNotify();
 
     ui.contentWidget->setCurrentWidget(ui.pageRequest);
-    client.CloseChat();
 
-    currentFriend.clear();
-
-    ui.listChat->clear();
-
-    ui.lblFriendName->clear();
+    CurrentChatClear();
 }
 
 void MiniChat::on_btnLogout_clicked()
@@ -350,23 +338,18 @@ void MiniChat::on_sessionList_itemClicked(
 
     ui.contentWidget->setCurrentWidget(ui.pageChat);
 
-    // 清除消息提醒
-    LoadRecentChats();
+    // 更新消息提醒
+    UpdateRecentChatNotify();
 }
 void MiniChat::on_btnBack_clicked()
 {
-    client.CloseChat();
-
-    currentFriend.clear();
-
-    ui.listChat->clear();
-
-    ui.lblFriendName->clear();
-
     ui.contentWidget->setCurrentWidget(ui.pageSession);
 
     LoadRecentChats();
+
+    CurrentChatClear();
 }
+
 void MiniChat::LoadHistory(
     const QString& friendName)
 {
@@ -534,8 +517,8 @@ void MiniChat::on_FriendList_itemClicked(
 
     ui.contentWidget->setCurrentWidget(ui.pageChat);
 
-    // 清除消息提醒
-    LoadRecentChats();
+    // 更新消息提醒
+    UpdateRecentChatNotify();
 }
 
 void MiniChat::ResetUI()
@@ -800,11 +783,9 @@ void MiniChat::on_FriendQuestList_itemClicked(
                 this,
                 "提示",
                 "已同意好友申请");
+
             LoadFriendRequestList();
     
-            client.ClearPendingNotify();
-
-            UpdateFriendRequestNotify();
         }
         else
         {
@@ -823,10 +804,9 @@ void MiniChat::on_FriendQuestList_itemClicked(
                 this,
                 "提示",
                 "已拒绝好友申请");
-            LoadFriendRequestList();
-            client.ClearPendingNotify();
 
-            UpdateFriendRequestNotify();
+            LoadFriendRequestList();
+
         }
         else
         {
@@ -836,13 +816,11 @@ void MiniChat::on_FriendQuestList_itemClicked(
                 "操作失败");
         }
     }
-    else
-    {
-        client.ClearPendingNotify();
 
-        UpdateFriendRequestNotify();
-        return;
-    }
+     client.ClearPendingNotify();
+
+     UpdateFriendRequestNotify();
+    return;
 }
 
 void MiniChat::UpdateFriendRequestNotify()
@@ -926,7 +904,7 @@ void MiniChat::OnFriendListMenu(
 
         LoadFriendList();
 
-        LoadRecentChats();
+        client.ClearNewMessage(friendName.toStdString());
 
         UpdateRecentChatNotify();
     }
@@ -937,4 +915,15 @@ void MiniChat::OnFriendListMenu(
             "提示",
             "删除失败");
     }
+}
+void MiniChat::CurrentChatClear()
+{
+
+    client.CloseChat();
+
+    currentFriend.clear();
+
+    ui.listChat->clear();
+
+    ui.lblFriendName->clear();
 }

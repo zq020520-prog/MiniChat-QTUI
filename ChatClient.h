@@ -62,6 +62,9 @@ public:
     bool DeleteFriend(
         const std::string& friendName);
 
+    bool ClearNewMessage(
+        const std::string& friendName);
+
     AddFriendResult AddFriend(
         const std::string& friendName);
 

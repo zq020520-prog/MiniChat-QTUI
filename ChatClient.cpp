@@ -213,15 +213,7 @@ void ChatClient::ReceiveLoop()
             }
             break;
         }
-        case MessageType::LOGIN_RESULT:
-        case MessageType::REGISTER_RESULT:
-        {
-            std::lock_guard<std::mutex> lock(replyMutex);
-            replyQueue.push_back(msg);
-            replyCV.notify_one();
-            break;
-        }
-
+   
         //=========================
         // 其它消息（登录、好友等）
         //=========================
@@ -638,7 +630,8 @@ bool ChatClient::HasAnyNewMessage()
 {
     return chatDB.HasAnyNewMessage();
 }
-bool ChatClient::HasNewMessage(const std::string& friendName)
+bool ChatClient::HasNewMessage(
+    const std::string& friendName)
 {
     return chatDB.HasNewMessage( friendName);
 }
@@ -686,4 +679,9 @@ bool ChatClient::HasPendingNotify()
 void ChatClient::ClearPendingNotify()
 {
     chatDB.ClearPendingNotify();
+}
+bool ChatClient::ClearNewMessage(
+    const std::string& friendName)
+{
+    return chatDB.ClearNewMessage(friendName);
 }

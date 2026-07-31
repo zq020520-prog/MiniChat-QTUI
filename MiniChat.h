@@ -34,6 +34,8 @@ private slots:
         QListWidgetItem* item);
 
     void OnFriendListMenu(const QPoint& pos);
+
+
 private:
     Ui::MiniChatClass ui;
     ChatClient client;
@@ -47,6 +49,8 @@ private:
     void LoadFriendList();
     void LoadFriendRequestList();
     void UpdateRecentChatNotify();
+
+    void CurrentChatClear();
 private:
 
     QString currentFriend;
