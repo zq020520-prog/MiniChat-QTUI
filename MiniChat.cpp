@@ -71,6 +71,8 @@ MiniChat::MiniChat(
                 },
                 Qt::QueuedConnection);
         };
+
+    //右键菜单删除好友
     ui.FriendList->setContextMenuPolicy(
         Qt::CustomContextMenu);
 
@@ -347,7 +349,8 @@ void MiniChat::on_sessionList_itemClicked(
     LoadHistory(friendName);
 
     ui.contentWidget->setCurrentWidget(ui.pageChat);
-    // 重新加载最近聊天
+
+    // 清除消息提醒
     LoadRecentChats();
 }
 void MiniChat::on_btnBack_clicked()
@@ -530,7 +533,8 @@ void MiniChat::on_FriendList_itemClicked(
     LoadHistory(friendName);
 
     ui.contentWidget->setCurrentWidget(ui.pageChat);
-    // 重新加载最近聊天
+
+    // 清除消息提醒
     LoadRecentChats();
 }
 
