@@ -2,8 +2,12 @@
 #include "MiniChat.h"
 #include <QMessageBox>
 
-MiniChat::MiniChat(QWidget *parent)
-    : QMainWindow(parent)
+MiniChat::MiniChat(
+    QString ip,
+    QWidget* parent
+)
+    : QMainWindow(parent),
+    serverIP(ip)
 {
     ui.setupUi(this);
 
@@ -557,7 +561,9 @@ bool MiniChat::EnsureConnected()
     if (client.IsConnected())
         return true;
 
-    if (!client.Connect("192.168.43.128", 8888))
+    if (!client.Connect(
+        serverIP.toStdString(),
+        8888))
     {
         client.Disconnect();
         ui.statusLabel->setText("网络异常，请重试！");

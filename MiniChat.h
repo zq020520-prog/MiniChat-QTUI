@@ -9,7 +9,10 @@ class MiniChat : public QMainWindow
     Q_OBJECT
 
 public:
-    MiniChat(QWidget *parent = nullptr);
+    MiniChat(
+        QString ip,
+        QWidget* parent = nullptr);
+
     ~MiniChat();
 private slots:
     void on_loginButton_clicked();
@@ -34,6 +37,8 @@ private slots:
 private:
     Ui::MiniChatClass ui;
     ChatClient client;
+
+    QString serverIP;   // 保存服务器IP
 
     void ResetUI();
     void UpdateFriendRequestNotify();
