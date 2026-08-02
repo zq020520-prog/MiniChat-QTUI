@@ -11,7 +11,7 @@ constexpr int MAX_TEXT_LEN = 512;
 //============================
 enum class MessageType
 {
-    LOGIN = 1,
+    LOGIN,
     LOGIN_RESULT,
 
     REGISTER,
@@ -29,22 +29,16 @@ enum class MessageType
 
     FRIEND_REQUEST_LIST,
 
-    FRIEND_REQUEST_ITEM,
-
     DELETE_FRIEND,
-    DELETE_FRIEND_RESULT,
 
     ACCEPT_FRIEND,
-    ACCEPT_FRIEND_RESULT,
 
     REJECT_FRIEND,
-    REJECT_FRIEND_RESULT,
 
     FRIEND_LIST,
 
-    PENDING_NOTIFY,
+    PENDING_NOTIFY
 
-    HEARTBEAT
 };
 
 //============================

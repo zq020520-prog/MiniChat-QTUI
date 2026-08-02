@@ -127,6 +127,8 @@ bool ChatDatabase::InsertMessage(
     const std::string& receiver,
     const std::string& content)
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     std::stringstream ss;
 
     ss << "INSERT INTO chat_history("
@@ -233,6 +235,7 @@ std::vector<ChatRecord> ChatDatabase::GetHistory(
 std::vector<RecentChat> ChatDatabase::GetRecentChats(
     const std::string& selfUser)
 {
+ 
     std::vector<RecentChat> recent;
 
     const char* sql =
@@ -308,6 +311,8 @@ std::vector<RecentChat> ChatDatabase::GetRecentChats(
 bool ChatDatabase::SetNewMessage(
     const std::string& friendName)
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     std::stringstream ss;
 
     ss << "SELECT friend_name "
@@ -402,6 +407,9 @@ bool ChatDatabase::HasNewMessage(
 bool ChatDatabase::ClearNewMessage(
     const std::string& friendName)
 {
+
+    std::lock_guard<std::mutex> lock(mtx);
+
     std::stringstream ss;
 
     ss << "UPDATE chat_session "
@@ -424,6 +432,8 @@ bool ChatDatabase::DeleteHistory(
     const std::string& selfUser,
     const std::string& friendName)
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     std::stringstream ss;
 
     ss << "DELETE FROM chat_history "
@@ -465,6 +475,7 @@ bool ChatDatabase::DeleteHistory(
 
 bool ChatDatabase::HasAnyNewMessage()
 {
+
     const char* sql =
         "SELECT 1 "
         "FROM chat_session "
@@ -492,6 +503,8 @@ bool ChatDatabase::HasAnyNewMessage()
 }
 bool ChatDatabase::SetPendingNotify()
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     const char* sql =
         "INSERT OR REPLACE INTO friend_session "
         "(id,has_new) VALUES(1,1);";
@@ -507,6 +520,7 @@ bool ChatDatabase::SetPendingNotify()
 }
 bool ChatDatabase::HasPendingNotify()
 {
+
     const char* sql =
         "SELECT has_new "
         "FROM friend_session "
@@ -538,6 +552,8 @@ bool ChatDatabase::HasPendingNotify()
 }
 bool ChatDatabase::ClearPendingNotify()
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     const char* sql =
         "UPDATE friend_session "
         "SET has_new=0 "

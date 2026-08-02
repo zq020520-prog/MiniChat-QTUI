@@ -50,6 +50,16 @@ private:
     void LoadFriendRequestList();
     void UpdateRecentChatNotify();
 
+    void AddFriendAction(AddFriendResult reply);
+
+    void LoginAction(LoginResult reply);
+
+    void RegisterAction(RegisterResult reply);
+
+    void FriendListAction(Message msg);
+
+    void FriendRequestListAction(Message msg);
+
     void CurrentChatClear();
 private:
 

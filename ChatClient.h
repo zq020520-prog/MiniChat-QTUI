@@ -11,7 +11,6 @@
 #include <queue>
 #include "ChatDatabase.h"
 #include <functional>
-
 struct FriendRequest
 {
     std::string sender;      // 申请人
@@ -51,6 +50,9 @@ public:
     ChatClient();
 
     ~ChatClient();
+
+    std::string username;
+
     std::function<void()> OnChatChanged;
 
     bool Connect(const std::string& ip,
@@ -92,11 +94,22 @@ public:
     bool HasNewMessage(const std::string& friendName);
 
     std::function<void()> OnRecentChatChanged;
+
     std::function<void()> OnFriendRequestChanged;
 
     std::vector<std::string> GetFriendList();
     // 获取好友申请
     std::vector<FriendRequest> GetFriendRequests();
+
+    std::function<void(AddFriendResult)> OnAddFriendResult;
+
+    std::function<void(LoginResult)> OnLoginResult;
+
+    std::function<void(RegisterResult)> OnRegisterResult;
+
+    std::function<void(Message)> OnFriendListResult;
+
+    std::function<void(Message)> OnFriendRequestListResult;
 
     void ClearPendingNotify();
 private:
@@ -105,21 +118,9 @@ private:
 
     SOCKET sock;
 
-    std::string username;
-
     std::atomic<bool> running;
 
     std::thread recvThread;
-
-
-    std::deque<Message> replyQueue;
-
-
-    // 互斥锁
-    std::mutex replyMutex;
-
-    // 条件变量
-    std::condition_variable replyCV;
 
     std::atomic<bool> chatting = false;
 
@@ -131,9 +132,6 @@ private:
 
 public:
 
-    bool WaitReply(
-        MessageType type,
-        Message& msg);
 
     bool IsConnected() const;
 

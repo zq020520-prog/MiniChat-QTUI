@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include <ws2tcpip.h>
-
+#include "MiniChat.h"
 #pragma comment(lib,"ws2_32.lib")
 
 using namespace std;
@@ -73,60 +73,7 @@ bool ChatClient::Connect(const std::string& ip,
     return true;
 }
 
-LoginResult ChatClient::Login(
-    const std::string& user,
-    const std::string& password)
-{
-    Message msg;
 
-    msg.type = MessageType::LOGIN;
-
-    strcpy_s(msg.sender, user.c_str());
-
-
-    strcpy_s(msg.password, password.c_str());
-
-    send(sock,
-        (char*)&msg,
-        sizeof(msg),
-        0);
-
-    Message reply;
-
-    if (!WaitReply(
-        MessageType::LOGIN_RESULT,
-        reply))
-    {
-        return LoginResult::NetworkError;
-    }
-
-    if (reply.result == (int)LoginResult::Success)
-    {
-        username = user;
-        std::string dbName =
-            username + "_chat.db";
-
-        if (chatDB.Open(dbName))
-        {
-            chatDB.CreateTable();
-        }
-
-        Message ready{};
-
-        ready.type = MessageType::READY;
-
-        strcpy_s(
-            ready.sender,
-            username.c_str());
-
-        send(sock,
-            (char*)&ready,
-            sizeof(ready),
-            0);
-    }
-
-    return (LoginResult)reply.result;
-}
 
 void ChatClient::ReceiveLoop()
 {
@@ -164,13 +111,13 @@ void ChatClient::ReceiveLoop()
                 msg.sender,
                 username,
                 msg.text);
-           
+
             if (currentChatFriend != msg.sender)
             {
-               
+
                 chatDB.SetNewMessage(msg.sender);
             }
-          
+
             if (OnRecentChatChanged)
             {
                 OnRecentChatChanged();
@@ -205,7 +152,7 @@ void ChatClient::ReceiveLoop()
         }
         case MessageType::PENDING_NOTIFY:
         {
-        
+
             chatDB.SetPendingNotify();
             if (OnFriendRequestChanged)
             {
@@ -213,26 +160,111 @@ void ChatClient::ReceiveLoop()
             }
             break;
         }
-   
+        case MessageType::FRIEND_LIST:
+        {
+            if (OnFriendListResult)
+            {
+                OnFriendListResult(msg);
+            }
+           
+            break;
+        }
+        case MessageType::FRIEND_REQUEST_LIST:
+        {
+            if (OnFriendRequestListResult)
+            {
+                OnFriendRequestListResult(msg);
+            }
+           
+            break;
+        }
+        case MessageType::ADD_FRIEND_RESULT:
+        {
+
+            AddFriendResult  reply = (AddFriendResult)msg.result;
+
+            if (OnAddFriendResult)
+            {
+                OnAddFriendResult(
+                    static_cast<AddFriendResult>(reply));
+            }
+            break;
+        }
+        case MessageType::LOGIN_RESULT:
+        {
+
+            if (msg.result == (int)LoginResult::Success)
+            {
+                username = msg.receiver;
+
+                std::string dbName =
+                    username + "_chat.db";
+
+                if (chatDB.Open(dbName))
+                    chatDB.CreateTable();
+           
+                Message ready{};
+
+                ready.type = MessageType::READY;
+
+                strcpy_s(ready.sender,username.c_str());
+
+                send(sock,(char*)&ready,sizeof(ready), 0);
+            }
+
+            LoginResult reply=(LoginResult)msg.result;
+
+            if (OnLoginResult)
+            {
+                OnLoginResult(
+                    (LoginResult)reply);
+            }
+            break;
+        }
+        case MessageType::REGISTER_RESULT:
+        {
+           
+            RegisterResult reply=(RegisterResult)msg.result;
+
+            if (OnRegisterResult)
+            {
+                OnRegisterResult(
+                    (RegisterResult)reply);
+            }
+            
+            break;
+        }
+
         //=========================
         // 其它消息（登录、好友等）
         //=========================
         default:
-        {
-
-         
-                std::lock_guard<std::mutex> lock(replyMutex);
-
-                replyQueue.push_back(msg);
-      
-
-                 replyCV.notify_one();
-
+       
             break;
-        }
 
         }
     }
+}
+
+LoginResult ChatClient::Login(
+    const std::string& user,
+    const std::string& password)
+{
+    Message msg;
+
+    msg.type = MessageType::LOGIN;
+
+    strcpy_s(msg.sender, user.c_str());
+
+
+    strcpy_s(msg.password, password.c_str());
+
+    send(sock,
+        (char*)&msg,
+        sizeof(msg),
+        0);
+
+    return (LoginResult)msg.result;
 }
 RegisterResult ChatClient::Register(
     const std::string& user,
@@ -251,16 +283,7 @@ RegisterResult ChatClient::Register(
         sizeof(msg),
         0);
 
-    Message reply{};
-
-    if (!WaitReply(
-        MessageType::REGISTER_RESULT,
-        reply))
-    {
-        return RegisterResult::NetworkError;
-    }
-
-    return (RegisterResult)reply.result;
+    return (RegisterResult)msg.result;
 }
 
 std::vector<RecentChat> ChatClient::GetRecentChats()
@@ -307,17 +330,8 @@ AddFriendResult ChatClient::AddFriend(
         (char*)&msg,
         sizeof(msg),
         0);
-
-    Message reply;
-
-    if (!WaitReply(
-        MessageType::ADD_FRIEND_RESULT,
-        reply))
-    {
-        return AddFriendResult::NetworkError;
-    }
-
-    return (AddFriendResult)reply.result;
+  
+    return (AddFriendResult)msg.result;
 }
 
 
@@ -336,27 +350,6 @@ std::vector<std::string> ChatClient::GetFriendList()
         (char*)&msg,
         sizeof(msg),
         0);
-
-    Message reply{};
-
-    if (!WaitReply(
-        MessageType::FRIEND_LIST,
-        reply))
-    {
-        return friends;
-    }
-
-    std::stringstream ss(reply.text);
-
-    std::string name;
-
-    while (getline(ss, name, '|'))
-    {
-        if (!name.empty())
-        {
-            friends.push_back(name);
-        }
-    }
 
     return friends;
 }
@@ -400,41 +393,6 @@ std::vector<FriendRequest> ChatClient::GetFriendRequests()
         sizeof(msg),
         0);
 
-    Message reply{};
-
-    if (!WaitReply(
-        MessageType::FRIEND_REQUEST_LIST,
-        reply))
-    {
-        return requests;
-    }
-
-    std::stringstream ss(reply.text);
-
-    std::string item;
-
-    while (getline(ss, item, '|'))
-    {
-        if (item.empty())
-            continue;
-
-        FriendRequest req;
-
-        std::stringstream line(item);
-
-        std::string status;
-
-        getline(line, req.sender, ',');
-
-        getline(line, req.receiver, ',');
-
-        getline(line, status, ',');
-
-        req.status = atoi(status.c_str());
-
-        requests.push_back(req);
-    }
-
     return requests;
 }
 bool ChatClient::AcceptFriend(const std::string& sender)
@@ -453,19 +411,7 @@ bool ChatClient::AcceptFriend(const std::string& sender)
         (char*)&msg,
         sizeof(msg),
         0);
-
-    Message reply{};
-
-    if (!WaitReply(
-        MessageType::ACCEPT_FRIEND_RESULT,
-        reply))
-    {
-        return false;
-    }
-
-    if (reply.result)
-    {
-
+  
         // 自动发送第一条消息
         Message chat{};
 
@@ -489,8 +435,7 @@ bool ChatClient::AcceptFriend(const std::string& sender)
             "我同意了你的好友申请，可以开始聊天了！");
 
         return true;
-    }
-    return false;
+
 }
 
 bool ChatClient::RejectFriend(const std::string& sender)
@@ -510,49 +455,10 @@ bool ChatClient::RejectFriend(const std::string& sender)
         sizeof(msg),
         0);
 
-    Message reply{};
-
-    if (!WaitReply(
-        MessageType::REJECT_FRIEND_RESULT,
-        reply))
-    {
-        return false;
-    }
-
-    if (reply.result)
-    {
-        return true;
-    }
-    return false;
+    return true;
+  
 }
 
-
-bool ChatClient::WaitReply(
-    MessageType type,
-    Message& msg)
-{
-    std::unique_lock<std::mutex> lock(replyMutex);
-
-    while (true)
-    {
-        replyCV.wait(lock, [this]
-            {
-                return !replyQueue.empty();
-            });
-
-        for (auto it = replyQueue.begin();
-            it != replyQueue.end();
-            ++it)
-        {
-            if (it->type == type)
-            {
-                msg = *it;
-                replyQueue.erase(it);
-                return true;
-            }
-        }
-    }
-}
 
 void ChatClient::SendChatMessage(const std::string& text)
 {
@@ -581,7 +487,6 @@ void ChatClient::SendChatMessage(const std::string& text)
 }
 
 
-
 bool ChatClient::DeleteFriend(
     const std::string& friendName)
 {
@@ -602,23 +507,7 @@ bool ChatClient::DeleteFriend(
         (char*)&msg,
         sizeof(msg),
         0);
-
-    Message reply{};
-
-    if (!WaitReply(
-        MessageType::DELETE_FRIEND_RESULT,
-        reply))
-    {
-
-        return false;
-    }
-
-    if (!reply.result)
-    {
-
-        return false;
-    }
-
+ 
     // 删除本地聊天记录
     chatDB.DeleteHistory(
         username,

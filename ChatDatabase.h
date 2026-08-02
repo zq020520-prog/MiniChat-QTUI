@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include "sqlite3.h"
-
+#include <mutex>
 struct ChatRecord
 {
     std::string sender;
@@ -74,4 +74,6 @@ public:
 private:
 
     sqlite3* db;
+
+    std::mutex mtx;
 };

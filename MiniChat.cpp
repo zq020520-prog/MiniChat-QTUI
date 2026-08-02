@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "MiniChat.h"
 #include <QMessageBox>
-
+#include <sstream>
 MiniChat::MiniChat(
     QString ip,
     QWidget* parent
@@ -71,7 +71,66 @@ MiniChat::MiniChat(
                 },
                 Qt::QueuedConnection);
         };
+    client.OnAddFriendResult =
+        [this](AddFriendResult reply)
+        {
+            QMetaObject::invokeMethod(
+                this,
+                [this, reply]()
+                {
+                    AddFriendAction(reply);
+                },
+         Qt::QueuedConnection);
+   
+        };
 
+    client.OnLoginResult =
+        [this](LoginResult reply)
+        {
+            QMetaObject::invokeMethod(
+                this,
+                [this, reply]()
+                {
+                    LoginAction(reply);
+                },
+                Qt::QueuedConnection);
+        };
+
+    client.OnRegisterResult =
+        [this](RegisterResult reply)
+        {
+            QMetaObject::invokeMethod(
+                this,
+                [this, reply]()
+                {
+                    RegisterAction(reply);
+                },
+                Qt::QueuedConnection);
+        };
+
+    client.OnFriendListResult =
+        [this](Message msg)
+        {
+            QMetaObject::invokeMethod(
+                this,
+                [this, msg]()
+                {
+                    FriendListAction(msg);
+                },
+                Qt::QueuedConnection);
+        };
+
+    client.OnFriendRequestListResult =
+        [this](Message msg)
+        {
+            QMetaObject::invokeMethod(
+                this,
+                [this, msg]()
+                {
+                   FriendRequestListAction(msg);
+                },
+                Qt::QueuedConnection);
+        };
     //右键菜单删除好友
     ui.FriendList->setContextMenuPolicy(
         Qt::CustomContextMenu);
@@ -96,65 +155,10 @@ void MiniChat::on_loginButton_clicked()
 
     QString pwd = ui.passwordEdit->text();
 
-    LoginResult result =
-        client.Login(
+    client.Login(
             user.toStdString(),
             pwd.toStdString());
-
-    switch (result)
-    {
-    case LoginResult::Success:
-    {
-        ui.stackedWidget->setCurrentIndex(1);
-
-        ui.labelUser->setText(user);
-
-        LoadRecentChats();
-
-        UpdateFriendRequestNotify();
-
-        break;
-    }
-
-    case LoginResult::UserNotExist:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "用户不存在");
-
-        break;
-    }
-
-    case LoginResult::PasswordError:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "密码错误");
-
-        break;
-    }
-
-    case LoginResult::NetworkError:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "网络异常");
-
-        break;
-    }
-    case LoginResult::AlreadyOnline:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "该账号已登录");
-
-        break;
-    }
-    }
+   
 };
 void MiniChat::on_registerButton_clicked()
 {
@@ -165,41 +169,9 @@ void MiniChat::on_registerButton_clicked()
 
     QString pwd = ui.passwordEdit->text();
 
-    RegisterResult result =
         client.Register(
             user.toStdString(),
             pwd.toStdString());
-
-    switch (result)
-    {
-    case RegisterResult::Success:
-        QMessageBox::information(
-            this,
-            "提示",
-            "注册成功");
-        break;
-
-    case RegisterResult::UserAlreadyExist:
-        QMessageBox::warning(
-            this,
-            "提示",
-            "用户名已存在");
-        break;
-
-    case RegisterResult::DatabaseError:
-        QMessageBox::warning(
-            this,
-            "提示",
-            "服务器错误，请重试");
-        break;
-
-    case RegisterResult::NetworkError:
-        QMessageBox::warning(
-            this,
-            "提示",
-            "网络异常，请重试");
-        break;
-    }
 }
 void MiniChat::on_btnSession_clicked()
 {
@@ -460,46 +432,21 @@ void MiniChat::on_deleteChat_clicked()
     }
 
 
-    if (client.DeleteChatHistory(
-        currentFriend.toStdString()))
-    {
+    client.DeleteChatHistory(
+        currentFriend.toStdString());
+
         ui.listChat->clear();
 
         LoadRecentChats();
 
-        QMessageBox::information(
-            this,
-            "提示",
-            "聊天记录已删除");
-    }
-    else
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "删除失败");
-    }
 }
 void MiniChat::LoadFriendList()
 {
     ui.FriendList->clear();
 
     // 获取好友列表
-    auto friends = client.GetFriendList();
+   client.GetFriendList();
 
-    for (const auto& name : friends)
-    {
-        QListWidgetItem* item =
-            new QListWidgetItem(
-                QString::fromStdString(name));
-
-        // 保存真实好友名
-        item->setData(
-            Qt::UserRole,
-            QString::fromStdString(name));
-
-        ui.FriendList->addItem(item);
-    }
 }
 void MiniChat::on_FriendList_itemClicked(
     QListWidgetItem* item)
@@ -584,148 +531,14 @@ void MiniChat::on_QuestSend_clicked()
         client.AddFriend(
             friendName.toStdString());
 
-    switch (result)
-    {
-    case AddFriendResult::Success:
-    {
-        QMessageBox::information(
-            this,
-            "提示",
-            "好友申请已发送！");
-
-        LoadFriendRequestList();
-        break;
-    }
-
-    case AddFriendResult::UserNotExist:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "用户不存在！");
-        break;
-    }
-
-    case AddFriendResult::AlreadyFriend:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "你们已经是好友！");
-        break;
-    }
-
-    case AddFriendResult::AlreadySent:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "已有好友申请！");
-        break;
-    }
-
-    case AddFriendResult::Self:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "不能添加自己为好友！");
-        break;
-    }
-
-    case AddFriendResult::DatabaseError:
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "服务器错误，请重试！");
-        break;
-    }
-    }
 };
 
 void MiniChat::LoadFriendRequestList()
 {
     ui.FriendQuestList->clear();
 
-    auto requests = client.GetFriendRequests();
+   client.GetFriendRequests();
 
-    for (auto& req : requests)
-    {
-        QString text;
-        // 只有别人申请我且未处理，才显示红点
-        if (req.receiver == client.GetUsername() &&
-            req.status == 0)
-        {
-            text += QString::fromUtf8("🔴 ");
-        }
-
-        // 显示名字
-        if (req.receiver == client.GetUsername())
-        {
-            text += QString::fromStdString(req.sender);
-        }
-        else
-        {
-            text += QString::fromStdString(req.receiver);
-        }
-
-        text += "\n";
-
-        // 状态
-        if (req.receiver == client.GetUsername())
-        {
-            // 别人申请我
-
-            if (req.status == 0)
-            {
-                text += "申请添加好友";
-            }
-            else if (req.status == 1)
-            {
-                text += "我已同意";
-            }
-            else
-            {
-                text += "我已拒绝";
-            }
-        }
-        else
-        {
-            // 我申请别人
-
-            if (req.status == 0)
-            {
-                text += "等待对方处理";
-            }
-            else if (req.status == 1)
-            {
-                text += "对方已同意";
-            }
-            else
-            {
-                text += "对方已拒绝";
-            }
-        }
-
-        QListWidgetItem* item =
-            new QListWidgetItem(text);
-
-        // 保存真实数据（后面点击要用）
-        item->setData(
-            Qt::UserRole,
-            QString::fromStdString(req.sender));
-
-        item->setData(
-            Qt::UserRole + 1,
-            QString::fromStdString(req.receiver));
-
-        item->setData(
-            Qt::UserRole + 2,
-            req.status);
-
-        ui.FriendQuestList->addItem(item);
-    }
 }
 
 void MiniChat::on_FriendQuestList_itemClicked(
@@ -776,45 +589,21 @@ void MiniChat::on_FriendQuestList_itemClicked(
 
     if (msg.clickedButton() == btnAccept)
     {
-        if (client.AcceptFriend(
-            sender.toStdString()))
-        {
-            QMessageBox::information(
-                this,
-                "提示",
-                "已同意好友申请");
+        client.AcceptFriend(
+            sender.toStdString());
+       
 
             LoadFriendRequestList();
     
-        }
-        else
-        {
-            QMessageBox::warning(
-                this,
-                "提示",
-                "操作失败");
-        }
     }
     else if (msg.clickedButton() == btnReject)
     {
-        if (client.RejectFriend(
-            sender.toStdString()))
-        {
-            QMessageBox::information(
-                this,
-                "提示",
-                "已拒绝好友申请");
+        client.RejectFriend(
+            sender.toStdString());
+      
 
             LoadFriendRequestList();
 
-        }
-        else
-        {
-            QMessageBox::warning(
-                this,
-                "提示",
-                "操作失败");
-        }
     }
 
      client.ClearPendingNotify();
@@ -894,27 +683,16 @@ void MiniChat::OnFriendListMenu(
     }
 
     // 删除
-    if (client.DeleteFriend(
-        friendName.toStdString()))
-    {
-        QMessageBox::information(
-            this,
-            "提示",
-            "删除成功");
+    client.DeleteFriend(
+        friendName.toStdString());
+   
 
         LoadFriendList();
 
         client.ClearNewMessage(friendName.toStdString());
 
         UpdateRecentChatNotify();
-    }
-    else
-    {
-        QMessageBox::warning(
-            this,
-            "提示",
-            "删除失败");
-    }
+
 }
 void MiniChat::CurrentChatClear()
 {
@@ -926,4 +704,289 @@ void MiniChat::CurrentChatClear()
     ui.listChat->clear();
 
     ui.lblFriendName->clear();
+}
+void MiniChat::AddFriendAction(AddFriendResult reply)
+{
+    switch (reply)
+    {
+        case AddFriendResult::Success:
+        {
+            QMessageBox::information(
+                this,
+                "提示",
+                "好友申请已发送！");
+
+            ui.FriendQuestList->clear();
+
+            client.GetFriendRequests();
+
+            break;
+        }
+        case AddFriendResult::UserNotExist:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "用户不存在！");
+            break;
+        }
+        case AddFriendResult::AlreadyFriend:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "你们已经是好友！");
+            break;
+        }
+        case AddFriendResult::AlreadySent:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "已有好友申请！");
+            break;
+        }
+        case AddFriendResult::Self:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "不能添加自己为好友！");
+            break;
+        }
+        case AddFriendResult::DatabaseError:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "服务器错误，请重试！");
+            break;
+        }
+    }
+}
+void MiniChat::LoginAction(LoginResult reply)
+{
+    switch (reply)
+    {
+        case LoginResult::Success:
+        {
+            ui.stackedWidget->setCurrentIndex(1);
+
+            ui.labelUser->setText(QString::fromStdString(client.username));
+
+            LoadRecentChats();
+
+            UpdateFriendRequestNotify();
+
+            break;
+        }
+
+        case LoginResult::UserNotExist:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "用户不存在");
+
+            break;
+        }
+
+        case LoginResult::PasswordError:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "密码错误");
+
+            break;
+        }
+
+        case LoginResult::NetworkError:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "网络异常");
+
+            break;
+        }
+        case LoginResult::AlreadyOnline:
+        {
+            QMessageBox::warning(
+                this,
+                "提示",
+                "该账号已登录");
+
+            break;
+        }
+    }
+}
+void MiniChat::RegisterAction(RegisterResult reply)
+{
+    switch (reply)
+    {
+    case RegisterResult::Success:
+        QMessageBox::information(
+            this,
+            "提示",
+            "注册成功");
+        break;
+
+    case RegisterResult::UserAlreadyExist:
+        QMessageBox::warning(
+            this,
+            "提示",
+            "用户名已存在");
+        break;
+
+    case RegisterResult::DatabaseError:
+        QMessageBox::warning(
+            this,
+            "提示",
+            "服务器错误，请重试");
+        break;
+
+    case RegisterResult::NetworkError:
+        QMessageBox::warning(
+            this,
+            "提示",
+            "网络异常，请重试");
+        break;
+    }
+}
+void MiniChat::FriendListAction(Message msg)
+{
+    std::vector<std::string> friends;
+
+    std::stringstream ss(msg.text);
+
+    std::string name;
+
+    while (getline(ss, name, '|'))
+    {
+        if (!name.empty())
+        {
+            friends.push_back(name);
+        }
+    }
+
+    for (const auto& name : friends)
+    {
+        QListWidgetItem* item =
+            new QListWidgetItem(
+                QString::fromStdString(name));
+
+        // 保存真实好友名
+        item->setData(
+            Qt::UserRole,
+            QString::fromStdString(name));
+
+        ui.FriendList->addItem(item);
+    }
+}
+void MiniChat::FriendRequestListAction(Message msg)
+{
+    std::vector<FriendRequest> requests;
+
+    std::stringstream ss(msg.text);
+
+    std::string item;
+
+    while (getline(ss, item, '|'))
+    {
+        if (item.empty())
+            continue;
+
+        FriendRequest req;
+
+        std::stringstream line(item);
+
+        std::string status;
+
+        getline(line, req.sender, ',');
+
+        getline(line, req.receiver, ',');
+
+        getline(line, status, ',');
+
+        req.status = atoi(status.c_str());
+
+        requests.push_back(req);
+    }
+    for (auto& req : requests)
+    {
+        QString text;
+        // 只有别人申请我且未处理，才显示红点
+        if (req.receiver == client.GetUsername() &&
+            req.status == 0)
+        {
+            text += QString::fromUtf8("🔴 ");
+        }
+
+        // 显示名字
+        if (req.receiver == client.GetUsername())
+        {
+            text += QString::fromStdString(req.sender);
+        }
+        else
+        {
+            text += QString::fromStdString(req.receiver);
+        }
+
+        text += "\n";
+
+        // 状态
+        if (req.receiver == client.GetUsername())
+        {
+            // 别人申请我
+
+            if (req.status == 0)
+            {
+                text += "申请添加好友";
+            }
+            else if (req.status == 1)
+            {
+                text += "我已同意";
+            }
+            else
+            {
+                text += "我已拒绝";
+            }
+        }
+        else
+        {
+            // 我申请别人
+
+            if (req.status == 0)
+            {
+                text += "等待对方处理";
+            }
+            else if (req.status == 1)
+            {
+                text += "对方已同意";
+            }
+            else
+            {
+                text += "对方已拒绝";
+            }
+        }
+
+        QListWidgetItem* item =
+            new QListWidgetItem(text);
+
+        // 保存真实数据（后面点击要用）
+        item->setData(
+            Qt::UserRole,
+            QString::fromStdString(req.sender));
+
+        item->setData(
+            Qt::UserRole + 1,
+            QString::fromStdString(req.receiver));
+
+        item->setData(
+            Qt::UserRole + 2,
+            req.status);
+
+        ui.FriendQuestList->addItem(item);
+    }
 }
